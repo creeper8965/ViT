@@ -1,4 +1,3 @@
-from re import L
 import torch
 from torch import nn, Tensor, optim
 F = nn.functional
@@ -33,28 +32,34 @@ class Dat(Dataset):
     def __getitem__(self, index):
         return self.x[index], self.y[index]
 
-
 class ViT_bert(nn.Module):
-    def __init__(self, channels,ImageSize,PatchSize,num_classes):
+    def __init__(self, channels:int,ImageSize:int,PatchSize:int,numClasses:int,hiddenSize:int,feedforwardDim:int,numAttentionHeads:int,numLayers:int,attentionDropout:float,hiddenDropout:float):
+        '''
+        Constructs a Visual Transformer based on Bert
+        Example Config for MNIST: channels=1,ImageSize=28,PatchSize=14,numClasses=94,hiddenSize=196,feedforwardDim=196,numAttentionHeads=14,numLayers=2,attentionDropout=0.1,hiddenDropout=0.1
+        '''
         super().__init__()
         self.channels = channels
         self.image_size = ImageSize
         self.patch_size = PatchSize
-        self.bert = BertSeq2Seq(hidden_size=196,intermediate_size=320,num_attention_heads=7,num_hidden_layers=4,attention_probs_dropout_prob=0.1,hidden_dropout_prob=0.1)
+        self.bert = BertSeq2Seq(hidden_size=hiddenSize,intermediate_size=feedforwardDim,num_attention_heads=numAttentionHeads,num_hidden_layers=numLayers,attention_probs_dropout_prob=attentionDropout,hidden_dropout_prob=hiddenDropout)
         self.patch_dim = self.channels * self.patch_size ** 2
         self.SeqLen = (self.image_size // self.patch_size) * (self.image_size // self.patch_size)
         self.EmbedImg = nn.Conv2d(self.channels,self.patch_dim,self.patch_size,self.patch_size)
         self.norm = nn.LayerNorm(self.patch_dim)
-        self.fc = nn.Linear(784,num_classes)
+        self.fc = nn.Linear((self.SeqLen*self.patch_dim),numClasses)
 
     def forward(self, img):
         Embed = self.EmbedImg(img).view(-1, self.SeqLen, self.patch_dim)
         Embed = self.norm(Embed)
-        logits = self.bert(Embed).flatten(1)
+        logits = self.bert(Embed)
+        logits = self.norm(logits)
+        logits = logits.flatten(1)
         logits = self.fc(logits)
         return logits
 
-model = ViT_bert(1,28,14,10).to('mps')
+
+model = ViT_bert(channels=1,ImageSize=28,PatchSize=14,numClasses=10,hiddenSize=196,feedforwardDim=320,numAttentionHeads=7,numLayers=4,attentionDropout=0.1,hiddenDropout=0.1).to('mps')
 opt = optim.AdamW(model.parameters(), 1e-4)
 
 TrainDS = Dat(Xtrain, Ytrain)
