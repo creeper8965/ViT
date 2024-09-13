@@ -2,7 +2,7 @@ import torch
 from torch import nn, Tensor, optim
 F = nn.functional
 from torch.utils.data import Dataset, DataLoader
-from bertTorchMaskless import BertSeq2Seq
+from TorchViT import ViT_bertCLS
 
 from os.path import expanduser
 from tqdm import tqdm, trange
@@ -37,33 +37,7 @@ TrainDL = DataLoader(TrainDS, batch_size=128, shuffle=True)
 TestDS = Dat(Xtest[:10000], Ytest[:10000])
 TestDL = DataLoader(TestDS, batch_size=1, shuffle=True)
 
-class ViT_bert(nn.Module):
-    def __init__(self, channels:int,ImageSize:int,PatchSize:int,numClasses:int,hiddenSize:int,feedforwardDim:int,numAttentionHeads:int,numLayers:int,attentionDropout:float,hiddenDropout:float):
-        '''
-        Constructs a Visual Transformer based on Bert
-        Example Config for MNIST: channels=1,ImageSize=28,PatchSize=14,numClasses=94,hiddenSize=196,feedforwardDim=196,numAttentionHeads=14,numLayers=2,attentionDropout=0.1,hiddenDropout=0.1
-        '''
-        super().__init__()
-        self.channels = channels
-        self.image_size = ImageSize
-        self.patch_size = PatchSize
-        self.bert = BertSeq2Seq(hidden_size=hiddenSize,intermediate_size=feedforwardDim,num_attention_heads=numAttentionHeads,num_hidden_layers=numLayers,attention_probs_dropout_prob=attentionDropout,hidden_dropout_prob=hiddenDropout)
-        self.patch_dim = self.channels * self.patch_size ** 2
-        self.SeqLen = (self.image_size // self.patch_size) * (self.image_size // self.patch_size)
-        self.EmbedImg = nn.Conv2d(self.channels,self.patch_dim,self.patch_size,self.patch_size)
-        self.norm = nn.LayerNorm(self.patch_dim)
-        self.fc = nn.Linear((self.SeqLen*self.patch_dim),numClasses)
-
-    def forward(self, img):
-        Embed = self.EmbedImg(img).view(-1, self.SeqLen, self.patch_dim)
-        Embed = self.norm(Embed)
-        logits = self.bert(Embed)
-        logits = self.norm(logits)
-        logits = logits.flatten(1)
-        logits = self.fc(logits)
-        return logits
-
-model = ViT_bert(channels=1,ImageSize=28,PatchSize=14,numClasses=94,hiddenSize=196,feedforwardDim=196,numAttentionHeads=14,numLayers=2,attentionDropout=0.1,hiddenDropout=0.1).to('mps')
+model = ViT_bertCLS(channels=1,ImageSize=28,PatchSize=14,numClasses=94,hiddenSize=196,feedforwardDim=196,numAttentionHeads=14,numLayers=2,attentionDropout=0.1,hiddenDropout=0.1).to('mps')
 opt = optim.AdamW(model.parameters(), 1e-4)
 
 for i in range(EPOCHS:=1):
