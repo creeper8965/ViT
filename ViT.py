@@ -127,7 +127,7 @@ class BertSelfAttention:
     key = self.transpose_for_scores(self.key(hidden_state))
     value = self.transpose_for_scores(self.value(hidden_state))
 
-    dots = query.matmul(key.transpose(-1,-1)) * self.scale
+    dots = query.matmul(key.transpose(-1,-2)) * self.scale
     attn = dots.softmax(axis=-1)
     attn = attn.dropout(self.dropout)
 
@@ -163,7 +163,7 @@ class ViT_bert:
         self.EmbedImg = nn.Conv2d(self.channels, self.patch_dim, self.patch_size, self.patch_size)
 
         # Positional Encoding
-        self.position_embeddings = Tensor.zeros(1, self.SeqLen + 1, self.patch_dim)  # +1 for class token
+        self.position_embeddings = Tensor.zeros(1, self.SeqLen+1, self.patch_dim)  #seqlen +1 for class token
         self.position_embeddings.requires_grad = True
 
         self.norm = nn.LayerNorm(self.patch_dim)
@@ -190,7 +190,7 @@ class ViT_bertCLS:
         self.EmbedImg = nn.Conv2d(self.channels, self.patch_dim, self.patch_size, self.patch_size)
 
         # Learnable class token
-        self.class_token = Tensor.zeros(1,1,self.patch_size)
+        self.class_token = Tensor.zeros(1,1,self.patch_dim)
         self.class_token.requires_grad = True
 
         # Positional encoding for the patches + class token
